@@ -7,109 +7,116 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>.smooth-transition { transition: all 0.3s ease; }</style>
 </head>
-<body class="bg-black text-slate-100 min-h-screen flex flex-col" x-data="{ mobileMenu: false, profileModal: false, buyModal: false }">
+<body class="bg-black text-slate-100 min-h-screen flex flex-col justify-between" x-data="{ mobileMenu: false, profileModal: false, buyModal: false }">
 
-    <!-- Navbar -->
-    <nav class="bg-slate-900 border-b border-blue-500/20 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-        <div class="flex items-center space-x-3">
-            <span class="text-xl font-bold tracking-wider text-blue-500">KING JPM</span>
-        </div>
-        
-        <!-- Desktop Right Menu -->
-        <div class="hidden md:flex items-center space-x-4">
-            <button @click="profileModal = true" class="flex items-center space-x-2 focus:outline-none">
+    <div>
+        <!-- Navbar -->
+        <nav class="bg-slate-900 border-b border-blue-500/20 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+            <div class="flex items-center space-x-3">
+                <span class="text-xl font-bold tracking-wider text-blue-500">KING JPM</span>
+            </div>
+            
+            <!-- Desktop Right Menu -->
+            <div class="hidden md:flex items-center space-x-4">
+                <button @click="profileModal = true" class="flex items-center space-x-2 focus:outline-none">
+                    <img src="<%= user.profileImage %>" alt="Profil" class="w-10 h-10 rounded-full border-2 border-blue-500 object-cover">
+                    <span class="font-medium text-sm"><%= user.username %></span>
+                </button>
+                <a href="/logout" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-4 py-2 rounded-lg text-sm smooth-transition">Logout</a>
+            </div>
+
+            <!-- Hamburger Button -->
+            <button @click="mobileMenu = !mobileMenu" class="md:hidden text-gray-300 focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+            </button>
+        </nav>
+
+        <!-- Mobile Dropdown Menu -->
+        <div x-show="mobileMenu" class="md:hidden bg-slate-900 border-b border-slate-800 px-6 py-4 space-y-3 smooth-transition">
+            <div class="flex items-center space-x-3 pb-3 border-b border-slate-800">
                 <img src="<%= user.profileImage %>" alt="Profil" class="w-10 h-10 rounded-full border-2 border-blue-500 object-cover">
                 <span class="font-medium text-sm"><%= user.username %></span>
-            </button>
-            <a href="/logout" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-4 py-2 rounded-lg text-sm smooth-transition">Logout</a>
+            </div>
+            <button @click="profileModal = true; mobileMenu = false;" class="w-full text-left py-2 text-gray-300 hover:text-blue-400">Edit Profil</button>
+            <a href="/logout" class="block py-2 text-red-400">Logout</a>
         </div>
 
-        <!-- Hamburger Button -->
-        <button @click="mobileMenu = !mobileMenu" class="md:hidden text-gray-300 focus:outline-none">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
-            </svg>
-        </button>
-    </nav>
+        <!-- Main Content -->
+        <main class="max-w-7xl w-full mx-auto p-6 space-y-6">
 
-    <!-- Mobile Dropdown Menu -->
-    <div x-show="mobileMenu" class="md:hidden bg-slate-900 border-b border-slate-800 px-6 py-4 space-y-3 smooth-transition">
-        <div class="flex items-center space-x-3 pb-3 border-b border-slate-800">
-            <img src="<%= user.profileImage %>" alt="Profil" class="w-10 h-10 rounded-full border-2 border-blue-500 object-cover">
-            <span class="font-medium text-sm"><%= user.username %></span>
-        </div>
-        <button @click="profileModal = true; mobileMenu = false;" class="w-full text-left py-2 text-gray-300 hover:text-blue-400">Edit Profil</button>
-        <a href="/logout" class="block py-2 text-red-400">Logout</a>
+            <!-- Header / Statistik VPS -->
+            <div class="bg-slate-900 border border-blue-500/20 rounded-2xl p-6 shadow-xl">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">Statistik VPS Server</h2>
+                        <p class="text-gray-400 text-sm">Monitoring performa server secara real-time</p>
+                    </div>
+                    <div class="mt-4 md:mt-0 flex items-center space-x-3">
+                        <span class="text-sm bg-blue-500/10 border border-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg">
+                            Slot Tersedia: <strong><%= maxLimit - totalActiveServers %> / <%= maxLimit %></strong>
+                        </span>
+                        <button @click="buyModal = true" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg font-semibold shadow-lg shadow-blue-600/30 smooth-transition">
+                            + Beli Server JPM
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Grid Statistik -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-black border border-slate-800 p-4 rounded-xl">
+                        <p class="text-gray-400 text-xs">CPU Usage</p>
+                        <p class="text-xl font-bold text-blue-400 mt-1"><%= vpsStats.cpuUsage %></p>
+                    </div>
+                    <div class="bg-black border border-slate-800 p-4 rounded-xl">
+                        <p class="text-gray-400 text-xs">RAM Usage</p>
+                        <p class="text-xl font-bold text-blue-400 mt-1"><%= vpsStats.ramUsage %></p>
+                    </div>
+                    <div class="bg-black border border-slate-800 p-4 rounded-xl">
+                        <p class="text-gray-400 text-xs">Disk Storage</p>
+                        <p class="text-xl font-bold text-blue-400 mt-1"><%= vpsStats.diskUsage %></p>
+                    </div>
+                    <div class="bg-black border border-slate-800 p-4 rounded-xl">
+                        <p class="text-gray-400 text-xs">Server Uptime</p>
+                        <p class="text-xl font-bold text-blue-400 mt-1"><%= vpsStats.uptime %></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daftar Server Milik User -->
+            <div class="bg-slate-900 border border-blue-500/20 rounded-2xl p-6 shadow-xl">
+                <h3 class="text-xl font-bold mb-4 text-white">Server JPM Anda</h3>
+                <% if (servers.length === 0) { %>
+                    <div class="text-center py-12 text-gray-500">
+                        Belum ada server JPM yang aktif. Silakan buat server baru!
+                    </div>
+                <% } else { %>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <% servers.forEach(server => { %>
+                            <a href="/server/<%= server._id %>" class="block bg-black border border-slate-800 hover:border-blue-500/50 rounded-xl p-5 space-y-3 smooth-transition group">
+                                <div class="flex justify-between items-center">
+                                    <h4 class="font-bold text-blue-400 group-hover:text-blue-300"><%= server.serverName %></h4>
+                                    <span class="text-xs px-2.5 py-1 bg-green-500/20 text-green-400 rounded-full border border-green-500/30">Kelola →</span>
+                                </div>
+                                <div class="text-sm text-gray-300 space-y-1">
+                                    <p>Bot: <%= server.botNumber %></p>
+                                    <p>Owner: <%= server.ownerNumber %></p>
+                                    <p>Prefix: <%= server.prefix %></p>
+                                    <p>Sisa Waktu: <%= Math.ceil((new Date(server.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)) %> Hari</p>
+                                </div>
+                            </a>
+                        <% }) %>
+                    </div>
+                <% } %>
+            </div>
+        </main>
     </div>
 
-    <!-- Main Content -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
-
-        <!-- Header / Statistik VPS -->
-        <div class="bg-slate-900 border border-blue-500/20 rounded-2xl p-6 shadow-xl">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                <div>
-                    <h2 class="text-2xl font-bold text-white">Statistik VPS Server</h2>
-                    <p class="text-gray-400 text-sm">Monitoring performa server secara real-time</p>
-                </div>
-                <div class="mt-4 md:mt-0 flex items-center space-x-3">
-                    <span class="text-sm bg-blue-500/10 border border-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg">
-                        Slot Tersedia: <strong><%= maxLimit - totalActiveServers %> / <%= maxLimit %></strong>
-                    </span>
-                    <button @click="buyModal = true" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg font-semibold shadow-lg shadow-blue-600/30 smooth-transition">
-                        + Beli Server JPM
-                    </button>
-                </div>
-            </div>
-
-            <!-- Grid Statistik -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-black border border-slate-800 p-4 rounded-xl">
-                    <p class="text-gray-400 text-xs">CPU Usage</p>
-                    <p class="text-xl font-bold text-blue-400 mt-1"><%= vpsStats.cpuUsage %></p>
-                </div>
-                <div class="bg-black border border-slate-800 p-4 rounded-xl">
-                    <p class="text-gray-400 text-xs">RAM Usage</p>
-                    <p class="text-xl font-bold text-blue-400 mt-1"><%= vpsStats.ramUsage %></p>
-                </div>
-                <div class="bg-black border border-slate-800 p-4 rounded-xl">
-                    <p class="text-gray-400 text-xs">Disk Storage</p>
-                    <p class="text-xl font-bold text-blue-400 mt-1"><%= vpsStats.diskUsage %></p>
-                </div>
-                <div class="bg-black border border-slate-800 p-4 rounded-xl">
-                    <p class="text-gray-400 text-xs">Server Uptime</p>
-                    <p class="text-xl font-bold text-blue-400 mt-1"><%= vpsStats.uptime %></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Daftar Server Milik User -->
-        <div class="bg-slate-900 border border-blue-500/20 rounded-2xl p-6 shadow-xl">
-            <h3 class="text-xl font-bold mb-4 text-white">Server JPM Anda</h3>
-            <% if (servers.length === 0) { %>
-                <div class="text-center py-12 text-gray-500">
-                    Belum ada server JPM yang aktif. Silakan buat server baru!
-                </div>
-            <% } else { %>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <% servers.forEach(server => { %>
-                        <div class="bg-black border border-slate-800 rounded-xl p-5 space-y-3">
-                            <div class="flex justify-between items-center">
-                                <h4 class="font-bold text-blue-400"><%= server.serverName %></h4>
-                                <span class="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">Aktif</span>
-                            </div>
-                            <div class="text-sm text-gray-300 space-y-1">
-                                <p>Bot: <%= server.botNumber %></p>
-                                <p>Owner: <%= server.ownerNumber %></p>
-                                <p>Prefix: <%= server.prefix %></p>
-                                <p>Sisa Waktu: <%= Math.ceil((new Date(server.expiresAt) - new Date()) / (1000 * 60 * 60 * 24)) %> Hari</p>
-                            </div>
-                        </div>
-                    <% }) %>
-                </div>
-            <% } %>
-        </div>
-    </main>
+    <!-- Footer Credit By ManzzyID -->
+    <footer class="bg-slate-900 border-t border-blue-500/10 py-4 text-center text-xs text-gray-500 mt-10">
+        KING JPM Panel &bull; Developed with ❤️ by <span class="text-blue-400 font-semibold">ManzzyID</span>
+    </footer>
 
     <!-- Modal Edit Profil -->
     <div x-show="profileModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" style="display: none;">

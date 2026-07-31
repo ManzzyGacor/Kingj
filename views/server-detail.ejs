@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Kontrol Server - <%= server.serverName %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>.smooth-transition { transition: all 0.3s ease; }</style>
+</head>
+<body class="bg-black text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-slate-900 border-b border-blue-500/20 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center space-x-3">
+            <a href="/dashboard" class="text-blue-400 hover:text-blue-300 text-sm font-semibold">← Kembali ke Dashboard</a>
+        </div>
+        <div class="flex items-center space-x-3">
+            <img src="<%= user.profileImage %>" alt="Profil" class="w-8 h-8 rounded-full border border-blue-500 object-cover">
+            <span class="font-medium text-sm"><%= user.username %></span>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-5xl w-full mx-auto p-6 space-y-6">
+
+        <!-- Header Status & Kontrol -->
+        <div class="bg-slate-900 border border-blue-500/20 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-white"><%= server.serverName %></h1>
+                <p class="text-gray-400 text-sm mt-1">Folder: <code class="text-blue-400"><%= server.folderName %></code></p>
+            </div>
+            <div class="flex items-center space-x-3">
+                <span class="px-3 py-1 rounded-full text-xs font-semibold <%= pm2Status === 'online' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30' %>">
+                    Status: <%= pm2Status.toUpperCase() %>
+                </span>
+            </div>
+        </div>
+
+        <!-- Tombol Kontrol & Info Pairing Code -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- Panel Kontrol PM2 -->
+            <div class="bg-slate-900 border border-blue-500/20 rounded-2xl p-6 shadow-xl space-y-4">
+                <h3 class="text-lg font-bold text-white">Kontrol Proses Bot</h3>
+                <p class="text-xs text-gray-400">Gunakan tombol di bawah untuk menyalakan, mematikan, atau merestart server bot WhatsApp kamu.</p>
+                
+                <div class="flex flex-wrap gap-3 pt-2">
+                    <form action="/server/<%= server._id %>/control" method="POST">
+                        <input type="hidden" name="action" value="start">
+                        <button type="submit" class="bg-green-600 hover:bg-green-500 text-white px-5 py-2.5 rounded-lg font-semibold text-sm shadow-lg shadow-green-600/30 smooth-transition">
+                            ▶ Start Bot
+                        </button>
+                    </form>
+                    <form action="/server/<%= server._id %>/control" method="POST">
+                        <input type="hidden" name="action" value="restart">
+                        <button type="submit" class="bg-yellow-600 hover:bg-yellow-500 text-white px-5 py-2.5 rounded-lg font-semibold text-sm shadow-lg shadow-yellow-600/30 smooth-transition">
+                            🔄 Restart
+                        </button>
+                    </form>
+                    <form action="/server/<%= server._id %>/control" method="POST">
+                        <input type="hidden" name="action" value="stop">
+                        <button type="submit" class="bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-lg font-semibold text-sm shadow-lg shadow-red-600/30 smooth-transition">
+                            ⏹ Stop Bot
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Panel Kode Tautan (Pairing Code) -->
+            <div class="bg-slate-900 border border-blue-500/20 rounded-2xl p-6 shadow-xl space-y-4">
+                <h3 class="text-lg font-bold text-white">Kode Tautan Perangkat</h3>
+                <p class="text-xs text-gray-400">Masukkan kode ini di WhatsApp (Linked Devices > Link with phone number).</p>
+                
+                <div class="bg-black border border-slate-800 p-4 rounded-xl text-center">
+                    <span class="text-2xl font-mono font-bold tracking-widest text-blue-400"><%= pairingCode %></span>
+                </div>
+                <p class="text-[10px] text-gray-500 text-center">*Jika kode belum muncul, klik Start lalu *Refresh* halaman ini setelah beberapa detik.</p>
+            </div>
+
+        </div>
+
+        <!-- Form Edit Konfigurasi -->
+        <div class="bg-slate-900 border border-blue-500/20 rounded-2xl p-6 shadow-xl space-y-4">
+            <h3 class="text-lg font-bold text-white">Pengaturan Konfigurasi Bot</h3>
+            <form action="/server/<%= server._id %>/update" method="POST" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Nama Server</label>
+                        <input type="text" name="serverName" value="<%= server.serverName %>" required class="w-full bg-black border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Prefix</label>
+                        <input type="text" name="prefix" value="<%= server.prefix %>" required class="w-full bg-black border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Nomor Bot</label>
+                        <input type="text" name="botNumber" value="<%= server.botNumber %>" required class="w-full bg-black border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-300 mb-1">Nomor Owner</label>
+                        <input type="text" name="ownerNumber" value="<%= server.ownerNumber %>" required class="w-full bg-black border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                <div class="flex justify-end pt-2">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg font-semibold text-sm shadow-lg shadow-blue-600/30 smooth-transition">
+                        Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+        </div>
+
+    </main>
+</body>
+</html>
