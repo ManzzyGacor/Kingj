@@ -347,6 +347,125 @@ app.post('/admin/settings/limit', isAdmin, async (req, res) => {
     }
 });
 
+import { exec } from 'child_process';
+import util from 'util';
+const execPromise = util.promisify(exec);
+
+// --- HALAMAN DETAIL SERVER USER ---
+app.get('/server/:id', isAuthenticated, async (req, res) => {
+    try {
+        const server = await ServerInstance.findOne({ _id: req.params.id, userId: req.session.userId });
+        if (!server) return res.status(404).send('Server tidak ditemukan atau bukan milik Anda.');
+
+        const targetPath = path.join(__dirname, 'instances', server.folderName);
+        const pm2Name = `bot-${server.folderName}`;
+
+        // Cek status PM2 secara real-time
+        let pm2Status = 'stopped';
+        try {
+            const { stdout } = await execPromise(`pm2 jlist`);
+            const list = JSON.parse(stdout);
+            const proc = list.find(p => p.name === pm2Name);
+            if (proc && proc.pm2_env.status === 'online') {
+                pm2Status = 'online';
+            }
+        } catch (e) {
+            console.error('Gagal cek status PM2:', e);
+        }
+
+        // Ambil log terakhir untuk mencari pairing code jika ada
+        let pairingCode = 'Belum digenerate / Bot sudah terkoneksi';
+        try {
+            const logPath = path.join(process.env.HOME || '/root', '.pm2', 'logs', `${pm2Name}-out.log`);
+            if (fs.existsSync(logPath)) {
+                const logContent = fs.readFileSync(logPath, 'utf8');
+                const matches = logContent.match(/Code Pairing\s*:\s*([0-9-]+)/g);
+                if (matches && matches.length > 0) {
+                    const lastMatch = matches[matches.length - 1];
+                    pairingCode = lastMatch;
+                }
+            }
+        } catch (e) {}
+
+        res.render('server-detail', {
+            user: await User.findById(req.session.userId),
+            server,
+            pm2Status,
+            pairingCode
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Gagal memuat detail server.');
+    }
+});
+
+// --- KONTROL SERVER (START / STOP / RESTART) ---
+app.post('/server/:id/control', isAuthenticated, async (req, res) => {
+    try {
+        const { action } = req.body; // 'start', 'stop', 'restart'
+        const server = await ServerInstance.findOne({ _id: req.params.id, userId: req.session.userId });
+        if (!server) return res.status(404).send('Server tidak ditemukan.');
+
+        const targetPath = path.join(__dirname, 'instances', server.folderName);
+        const pm2Name = `bot-${server.folderName}`;
+
+        if (action === 'start') {
+            if (!fs.existsSync(targetPath)) {
+                return res.status(400).send('Folder instance bot tidak ditemukan di VPS.');
+            }
+            await execPromise(`pm2 start index.js --name "${pm2Name}" --cwd "${targetPath}"`);
+        } else if (action === 'stop') {
+            await execPromise(`pm2 stop "${pm2Name}"`);
+        } else if (action === 'restart') {
+            await execPromise(`pm2 restart "${pm2Name}"`);
+        }
+
+        res.redirect(`/server/${server._id}`);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Gagal menjalankan perintah kontrol server.');
+    }
+});
+
+// --- EDIT KONFIGURASI SERVER ---
+app.post('/server/:id/update', isAuthenticated, async (req, res) => {
+    try {
+        const { serverName, botNumber, ownerNumber, prefix } = req.body;
+        const server = await ServerInstance.findOne({ _id: req.params.id, userId: req.session.userId });
+        if (!server) return res.status(404).send('Server tidak ditemukan.');
+
+        // Update database
+        server.serverName = serverName;
+        server.botNumber = botNumber;
+        server.ownerNumber = ownerNumber;
+        server.prefix = prefix;
+        await server.save();
+
+        // Update file config.js di folder instance user secara otomatis
+        const targetPath = path.join(__dirname, 'instances', server.folderName);
+        const configPath = path.join(targetPath, 'config.js');
+
+        const configContent = `
+const numberAllowed = ["${ownerNumber}"];
+global.prefix = ["${prefix}"];
+global.jeda = 15000;
+global.name_script = "${serverName}";
+global.version = "1.0";
+global.botNumber = "${botNumber}";
+global.autojpm = { hidetag: false, jedaPutaran: 10000 };
+export { numberAllowed };
+`;
+        if (fs.existsSync(targetPath)) {
+            fs.writeFileSync(configPath, configContent.trim());
+        }
+
+        res.redirect(`/server/${server._id}`);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Gagal memperbarui konfigurasi server.');
+    }
+});
+
 app.listen(process.env.PORT || 3000, () => {
     console.log(`🚀 KING JPM Server berjalan di port ${process.env.PORT || 3000}`);
 });
