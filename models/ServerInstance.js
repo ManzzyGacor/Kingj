@@ -7,7 +7,7 @@ const serverSchema = new mongoose.Schema({
     ownerNumber: { type: String, required: true },
     prefix: { type: String, default: '.' },
     durationDays: { type: Number, required: true },
-    status: { type: String, enum: ['active', 'expired', 'stopped'], default: 'active' },
+    status: { type: String, enum: ['active', 'expired', 'stopped', 'pending'], default: 'pending' },
     expiresAt: { type: Date, required: true },
     createdAt: { type: Date, default: Date.now }
 });
