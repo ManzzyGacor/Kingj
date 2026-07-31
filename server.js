@@ -148,9 +148,6 @@ app.post('/profile/update', isAuthenticated, async (req, res) => {
 
 // --- REAL PAKASIR API INTEGRATION ---
 
-
-
-// --- 1. RUTE BELI SERVER & BUAT TRANSAKSI PAKASIR ---
 // --- 1. RUTE BELI SERVER & BUAT TRANSAKSI PAKASIR ---
 app.post('/server/buy', isAuthenticated, async (req, res) => {
     try {
@@ -181,7 +178,7 @@ app.post('/server/buy', isAuthenticated, async (req, res) => {
             price,
             orderId,
             expiresAt,
-            durationDays: parseInt(duration) // <--- INI PERBAIKANNYA AGAR TIDAK ERROR
+            durationDays: parseInt(duration)
         });
 
         // Request QRIS ke API Pakasir
@@ -192,7 +189,14 @@ app.post('/server/buy', isAuthenticated, async (req, res) => {
             api_key: process.env.PAKASIR_API_KEY
         };
 
-        const response = await axios.post('https://app.pakasir.com/api/transaction/create', pakasirPayload);
+        // PERBAIKAN: Tambahkan Headers (User-Agent) agar lolos dari Cloudflare Pakasir
+        const response = await axios.post('https://app.pakasir.com/api/transaction/create', pakasirPayload, {
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json'
+            }
+        });
         
         if (response.data && response.data.payment_url) {
             return res.redirect(response.data.payment_url);
@@ -202,7 +206,12 @@ app.post('/server/buy', isAuthenticated, async (req, res) => {
 
     } catch (err) {
         console.error('BUY SERVER ERROR:', err);
-        res.status(500).send(`Gagal memproses pembelian: ${err.message}`);
+        // Tangkap pesan error khusus jika masih diblokir Cloudflare
+        if (err.response && err.response.status === 403) {
+            res.status(500).send('Gagal memproses: Request diblokir oleh keamanan Cloudflare Pakasir.');
+        } else {
+            res.status(500).send(`Gagal memproses pembelian: ${err.message}`);
+        }
     }
 });
 
