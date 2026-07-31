@@ -353,13 +353,18 @@ app.post('/admin/settings/limit', isAdmin, async (req, res) => {
 // --- HALAMAN DETAIL SERVER USER ---
 app.get('/server/:id', isAuthenticated, async (req, res) => {
     try {
-        // Validasi apakah ID valid
         if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
             return res.status(400).send('Format ID Server tidak valid.');
         }
 
         const server = await ServerInstance.findOne({ _id: req.params.id, userId: req.session.userId });
         if (!server) return res.status(404).send('Server tidak ditemukan atau bukan milik Anda.');
+
+        // PERBAIKAN: Jika folderName kosong/undefined di database, buatkan fallback otomatis
+        if (!server.folderName) {
+            server.folderName = `server_${server._id}`;
+            await server.save();
+        }
 
         const targetPath = path.join(__dirname, 'instances', server.folderName);
         const pm2Name = `bot-${server.folderName}`;
@@ -395,7 +400,6 @@ app.get('/server/:id', isAuthenticated, async (req, res) => {
         res.status(500).send(`Gagal memuat detail server: ${err.message}`);
     }
 });
-
 // --- KONTROL SERVER (START / STOP / RESTART) ---
 app.post('/server/:id/control', isAuthenticated, async (req, res) => {
     try {
