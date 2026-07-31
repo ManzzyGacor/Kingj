@@ -151,6 +151,7 @@ app.post('/profile/update', isAuthenticated, async (req, res) => {
 
 
 // --- 1. RUTE BELI SERVER & BUAT TRANSAKSI PAKASIR ---
+// --- 1. RUTE BELI SERVER & BUAT TRANSAKSI PAKASIR ---
 app.post('/server/buy', isAuthenticated, async (req, res) => {
     try {
         const { serverName, botNumber, ownerNumber, prefix, duration } = req.body;
@@ -164,10 +165,11 @@ app.post('/server/buy', isAuthenticated, async (req, res) => {
         const orderId = `JPM_${Date.now()}`;
         const folderName = `bot_${userId}_${Date.now()}`;
 
-        // Simpan data server ke database dengan status 'pending'
+        // Hitung masa aktif server
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + parseInt(duration));
 
+        // Simpan data server ke database dengan status 'pending'
         await ServerInstance.create({
             userId,
             serverName,
@@ -178,12 +180,13 @@ app.post('/server/buy', isAuthenticated, async (req, res) => {
             status: 'pending',
             price,
             orderId,
-            expiresAt
+            expiresAt,
+            durationDays: parseInt(duration) // <--- INI PERBAIKANNYA AGAR TIDAK ERROR
         });
 
         // Request QRIS ke API Pakasir
         const pakasirPayload = {
-            project: process.env.PAKASIR_PROJECT || 'kingjpm', // Sesuaikan nama project Pakasir kamu
+            project: process.env.PAKASIR_PROJECT || 'kingjpm', 
             order_id: orderId,
             amount: price,
             api_key: process.env.PAKASIR_API_KEY
@@ -216,7 +219,7 @@ app.post('/api/webhook/pakasir', async (req, res) => {
                 return res.json({ status: 'success', message: 'Already activated' });
             }
 
-            // Pastikan folder instances dan master-bot ada
+            // Pastikan folder instances dan master-bot ada secara otomatis
             const instancesDir = path.join(__dirname, 'instances');
             if (!fs.existsSync(instancesDir)) {
                 fs.mkdirSync(instancesDir, { recursive: true });
