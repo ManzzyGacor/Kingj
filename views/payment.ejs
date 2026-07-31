@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Pembayaran QRIS - KING JPM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Library QR Code Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>.smooth-transition { transition: all 0.3s ease; }</style>
+</head>
+<body class="bg-black text-white flex items-center justify-center min-h-screen p-4">
+    <div class="bg-slate-900 border border-blue-500/30 p-8 rounded-2xl shadow-2xl w-full max-w-md text-center space-y-6">
+        <div>
+            <h1 class="text-2xl font-bold text-blue-500">Scan QRIS Pembayaran</h1>
+            <p class="text-gray-400 text-sm mt-1">Selesaikan pembayaran untuk server <strong class="text-white"><%= serverData.serverName %></strong></p>
+        </div>
+
+        <div class="bg-white p-4 rounded-xl inline-block shadow-lg">
+            <div id="qrcode" class="flex justify-center"></div>
+        </div>
+
+        <div class="bg-black border border-slate-800 p-4 rounded-xl text-left space-y-2 text-sm">
+            <div class="flex justify-between">
+                <span class="text-gray-400">Total Pembayaran:</span>
+                <span class="font-bold text-blue-400">Rp <%= payment.total_payment.toLocaleString('id-ID') %></span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-400">Order ID:</span>
+                <span class="text-gray-200"><%= payment.order_id %></span>
+            </div>
+        </div>
+
+        <p class="text-xs text-gray-500">Silakan scan menggunakan aplikasi e-wallet atau mobile banking apa saja. Status server akan aktif otomatis setelah pembayaran terkonfirmasi.</p>
+
+        <a href="/dashboard" class="block w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-blue-600/30 smooth-transition">
+            Kembali ke Dashboard
+        </a>
+    </div>
+
+    <script>
+        // Generate QR code dari string payment_number Pakasir
+        const qrString = "<%= payment.payment_number %>";
+        new QRCode(document.getElementById("qrcode"), {
+            text: qrString,
+            width: 220,
+            height: 220,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - KING JPM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>.smooth-transition { transition: all 0.3s ease; }</style>
+</head>
+<body class="bg-black text-white flex items-center justify-center min-h-screen">
+    <div class="bg-slate-900 border border-blue-500/30 p-8 rounded-2xl shadow-2xl w-full max-w-md smooth-transition">
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold tracking-wider text-blue-500">KING JPM</h1>
+            <p class="text-gray-400 text-sm mt-1">Silakan masuk ke akun Anda</p>
+        </div>
+        <% if (error) { %>
+            <div class="bg-red-500/20 border border-red-500 text-red-300 p-3 rounded-lg mb-4 text-sm text-center">
+                <%= error %>
+            </div>
+        <% } %>
+        <form action="/login" method="POST" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Username</label>
+                <input type="text" name="username" required class="w-full bg-black border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 smooth-transition">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Password</label>
+                <input type="password" name="password" required class="w-full bg-black border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 smooth-transition">
+            </div>
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-blue-600/30 smooth-transition">
+                Masuk
+            </button>
+        </form>
+        <p class="text-center text-sm text-gray-400 mt-6">
+            Belum punya akun? <a href="/register" class="text-blue-400 hover:underline">Daftar di sini</a>
+        </p>
+    </div>
+</body>
+</html>

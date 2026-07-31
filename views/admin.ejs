@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard - KING JPM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>.smooth-transition { transition: all 0.3s ease; }</style>
+</head>
+<body class="bg-black text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Navbar Admin -->
+    <nav class="bg-slate-900 border-b border-blue-500/20 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center space-x-3">
+            <span class="text-xl font-bold tracking-wider text-blue-500">KING JPM ADMIN</span>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span class="text-sm text-gray-400">Admin: <strong class="text-white"><%= user.username %></strong></span>
+            <a href="/logout" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-4 py-2 rounded-lg text-sm smooth-transition">Logout</a>
+        </div>
+    </nav>
+
+    <!-- Main Admin Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+
+        <!-- Pengaturan Batas Maksimal Server -->
+        <div class="bg-slate-900 border border-blue-500/20 rounded-2xl p-6 shadow-xl">
+            <h3 class="text-xl font-bold mb-4 text-white">Pengaturan Batas Server JPM</h3>
+            <form action="/admin/settings/limit" method="POST" class="flex items-center space-x-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Maksimal Slot Server</label>
+                    <input type="number" name="maxServers" value="<%= maxServers %>" required class="bg-black border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 w-32">
+                </div>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg font-semibold shadow-lg shadow-blue-600/30 self-end smooth-transition">
+                    Simpan Pengaturan
+                </button>
+            </form>
+        </div>
+
+        <!-- Daftar Semua Server Aktif -->
+        <div class="bg-slate-900 border border-blue-500/20 rounded-2xl p-6 shadow-xl">
+            <h3 class="text-xl font-bold mb-4 text-white">Daftar Seluruh Server User</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-gray-400">
+                            <th class="py-3 px-4">Server Name</th>
+                            <th class="py-3 px-4">Owner User</th>
+                            <th class="py-3 px-4">Nomor Bot</th>
+                            <th class="py-3 px-4">Status</th>
+                            <th class="py-3 px-4">Expired</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if (servers.length === 0) { %>
+                            <tr><td colspan="5" class="text-center py-6 text-gray-500">Belum ada server terdaftar.</td></tr>
+                        <% } else { %>
+                            <% servers.forEach(srv => { %>
+                                <tr class="border-b border-slate-800/50 hover:bg-slate-800/20">
+                                    <td class="py-3 px-4 font-bold text-blue-400"><%= srv.serverName %></td>
+                                    <td class="py-3 px-4"><%= srv.userId ? srv.userId.username : 'Unknown' %></td>
+                                    <td class="py-3 px-4"><%= srv.botNumber %></td>
+                                    <td class="py-3 px-4">
+                                        <span class="px-2 py-1 rounded text-xs <%= srv.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400' %>">
+                                            <%= srv.status %>
+                                        </span>
+                                    </td>
+                                    <td class="py-3 px-4"><%= new Date(srv.expiresAt).toLocaleDateString('id-ID') %></td>
+                                </tr>
+                            <% }) %>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+</body>
+</html>
