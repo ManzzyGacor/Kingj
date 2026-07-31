@@ -7,13 +7,15 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { exec } from 'child_process';
+import util from 'util';
+
 
 import User from './models/User.js';
 import ServerInstance from './models/ServerInstance.js';
 import Settings from './models/Settings.js';
 
 dotenv.config();
-
+const execPromise = util.promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -347,9 +349,6 @@ app.post('/admin/settings/limit', isAdmin, async (req, res) => {
     }
 });
 
-import { exec } from 'child_process';
-import util from 'util';
-const execPromise = util.promisify(exec);
 
 // --- HALAMAN DETAIL SERVER USER ---
 app.get('/server/:id', isAuthenticated, async (req, res) => {
