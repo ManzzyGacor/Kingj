@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { exec } from 'child_process';
 import util from 'util';
-
+import axios from 'axios'; // Pastikan axios sudah terinstall, jika belum: npm install axios
 
 import User from './models/User.js';
 import ServerInstance from './models/ServerInstance.js';
@@ -148,142 +148,113 @@ app.post('/profile/update', isAuthenticated, async (req, res) => {
 
 // --- REAL PAKASIR API INTEGRATION ---
 
+
+
+// --- 1. RUTE BELI SERVER & BUAT TRANSAKSI PAKASIR ---
 app.post('/server/buy', isAuthenticated, async (req, res) => {
     try {
         const { serverName, botNumber, ownerNumber, prefix, duration } = req.body;
-        
-        const limitSetting = await Settings.findOne({ key: 'maxServers' });
-        const maxLimit = limitSetting ? limitSetting.value : 15;
-        const activeCount = await ServerInstance.countDocuments({ status: 'active' });
-        
-        if (activeCount >= maxLimit) {
-            return res.status(400).send(`Mohon maaf, slot server JPM penuh (Maksimal ${maxLimit} server).`);
-        }
+        const userId = req.session.userId;
 
-        let price = 0;
-        let days = parseInt(duration);
-        if (days === 10) price = 4000;
-        else if (days === 20) price = 6000;
-        else if (days === 30) price = 9000;
-        else return res.status(400).send('Durasi tidak valid.');
+        // Tentukan harga berdasarkan durasi
+        let price = 4000;
+        if (duration == '20') price = 6000;
+        if (duration == '30') price = 9000;
 
-        const orderId = `KINGJPM-${Date.now()}`;
-        const slug = 'kingjpm';
-        const apiKey = 'Xs25AnZO2UW08aIapO4l3gyxTjJCCFKB';
+        const orderId = `JPM_${Date.now()}`;
+        const folderName = `bot_${userId}_${Date.now()}`;
 
-        // Kirim request real ke API Pakasir
-        const response = await fetch(`https://app.pakasir.com/api/transactioncreate/qris`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                project: slug,
-                order_id: orderId,
-                amount: price,
-                api_key: apiKey
-            })
-        });
-
-        const data = await response.json();
-        
-        if (!data.payment) {
-            return res.status(400).send('Gagal membuat transaksi ke Pakasir: ' + JSON.stringify(data));
-        }
-
-        // Simpan instance sementara dengan status pending
-        const randomDigits = Math.floor(100 + Math.random() * 900);
-        const folderSlug = `${req.session.username.toLowerCase()}_${randomDigits}`;
-
+        // Simpan data server ke database dengan status 'pending'
         const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + days);
+        expiresAt.setDate(expiresAt.getDate() + parseInt(duration));
 
         await ServerInstance.create({
-            userId: req.session.userId,
+            userId,
             serverName,
             botNumber,
             ownerNumber,
-            prefix: prefix || '.',
-            durationDays: days,
+            prefix,
+            folderName,
             status: 'pending',
-            orderId: orderId,
-            folderName: folderSlug,
+            price,
+            orderId,
             expiresAt
         });
 
-        // Render halaman pembayaran QRIS
-        res.render('payment', {
-            payment: data.payment,
-            serverData: { serverName, botNumber, orderId }
-        });
+        // Request QRIS ke API Pakasir
+        const pakasirPayload = {
+            project: process.env.PAKASIR_PROJECT || 'kingjpm', // Sesuaikan nama project Pakasir kamu
+            order_id: orderId,
+            amount: price,
+            api_key: process.env.PAKASIR_API_KEY
+        };
+
+        const response = await axios.post('https://app.pakasir.com/api/transaction/create', pakasirPayload);
+        
+        if (response.data && response.data.payment_url) {
+            return res.redirect(response.data.payment_url);
+        } else {
+            return res.status(500).send('Gagal membuat transaksi pembayaran dengan Pakasir.');
+        }
 
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Gagal memproses pembayaran Pakasir.');
+        console.error('BUY SERVER ERROR:', err);
+        res.status(500).send(`Gagal memproses pembelian: ${err.message}`);
     }
 });
 
-// --- WEBHOOK PAKASIR & AUTO DEPLOYMENT ---
-
+// --- 2. WEBHOOK PAKASIR (OTOMATIS AKTIF SAAT PEMBAYARAN SUKSES) ---
 app.post('/api/webhook/pakasir', async (req, res) => {
     try {
-        const { order_id, amount, status, project } = req.body;
-        
-        if (project !== 'kingjpm') return res.status(400).json({ error: 'Invalid project' });
+        const { order_id, status } = req.body;
 
-        const serverInstance = await ServerInstance.findOne({ orderId: order_id });
-        if (!serverInstance) return res.status(404).json({ error: 'Order not found' });
+        if (status === 'completed' || status === 'success') {
+            const server = await ServerInstance.findOne({ orderId: order_id });
+            if (!server) return res.status(404).json({ status: 'error', message: 'Server order not found' });
 
-        if (status === 'completed' && serverInstance.status === 'pending') {
-            serverInstance.status = 'active';
-            await serverInstance.save();
+            if (server.status === 'active') {
+                return res.json({ status: 'success', message: 'Already activated' });
+            }
 
-            // OTOMATISASI SETUP SCRIPT BOT DI VPS
-            const folderName = serverInstance.folderName;
-            const masterPath = path.join(__dirname, 'master-bot'); // Folder master script bot kamu
-            const targetPath = path.join(__dirname, 'instances', folderName);
+            // Pastikan folder instances dan master-bot ada
+            const instancesDir = path.join(__dirname, 'instances');
+            if (!fs.existsSync(instancesDir)) {
+                fs.mkdirSync(instancesDir, { recursive: true });
+            }
 
-            if (!fs.existsSync(targetPath)) {
-                fs.mkdirSync(targetPath, { recursive: true });
-                
-                // Copy file script utama jika master ada, atau buat instance kosong
-                if (fs.existsSync(masterPath)) {
-                    fs.cpSync(masterPath, targetPath, {
-                        recursive: true,
-                        filter: (src) => !src.includes('node_modules') && !src.includes('sessions') && !src.includes('database')
-                    });
-                    
-                    // Buat symlink node_modules agar hemat storage
-                    const masterNodeModules = path.join(masterPath, 'node_modules');
-                    const targetNodeModules = path.join(targetPath, 'node_modules');
-                    if (fs.existsSync(masterNodeModules) && !fs.existsSync(targetNodeModules)) {
-                        fs.symlinkSync(masterNodeModules, targetNodeModules, 'junction');
-                    }
-                }
+            const sourcePath = path.join(__dirname, 'master-bot');
+            const targetPath = path.join(instancesDir, server.folderName);
 
-                // Tulis config.js otomatis
-                const configContent = `
-const numberAllowed = ["${serverInstance.ownerNumber}"];
-global.prefix = ["${serverInstance.prefix}"];
+            // Salin isi master-bot ke folder instance user
+            if (fs.existsSync(sourcePath)) {
+                fs.cpSync(sourcePath, targetPath, { recursive: true });
+            }
+
+            // Buat file config.js di dalam folder instance user
+            const configPath = path.join(targetPath, 'config.js');
+            const configContent = `
+const numberAllowed = ["${server.ownerNumber}"];
+global.prefix = ["${server.prefix}"];
 global.jeda = 15000;
-global.name_script = "${serverInstance.serverName}";
+global.name_script = "${server.serverName}";
 global.version = "1.0";
-global.botNumber = "${serverInstance.botNumber}";
+global.botNumber = "${server.botNumber}";
 global.autojpm = { hidetag: false, jedaPutaran: 10000 };
 export { numberAllowed };
 `;
-                fs.writeFileSync(path.join(targetPath, 'config.js'), configContent.trim());
+            fs.writeFileSync(configPath, configContent.trim());
 
-                // Jalankan bot via PM2
-                const pm2Name = `bot-${folderName}`;
-                exec(`pm2 start index.js --name "${pm2Name}" --cwd "${targetPath}"`, (err) => {
-                    if (err) console.error(`Gagal run PM2 ${pm2Name}:`, err);
-                });
-            }
+            // Ubah status server menjadi active di database
+            server.status = 'active';
+            await server.save();
+
+            return res.json({ status: 'success', message: 'Server activated successfully' });
         }
 
-        res.json({ status: 'success' });
+        res.json({ status: 'ignored', message: 'Status not completed' });
     } catch (err) {
-        console.error('Webhook error:', err);
-        res.status(500).json({ error: err.message });
+        console.error('WEBHOOK ERROR:', err);
+        res.status(500).json({ status: 'error', message: err.message });
     }
 });
 // --- AUTO HAPUS SERVER EXPIRED (Berjalan setiap 1 Jam) ---
