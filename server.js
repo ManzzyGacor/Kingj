@@ -284,7 +284,40 @@ export { numberAllowed };
         res.status(500).json({ error: err.message });
     }
 });
+// --- AUTO HAPUS SERVER EXPIRED (Berjalan setiap 1 Jam) ---
+setInterval(async () => {
+    try {
+        // Cari server yang statusnya 'active' tapi waktunya sudah lewat hari ini
+        const expiredServers = await ServerInstance.find({
+            status: 'active',
+            expiresAt: { $lte: new Date() }
+        });
 
+        for (const server of expiredServers) {
+            // Ubah status di database
+            server.status = 'expired';
+            await server.save();
+
+            const folderName = server.folderName;
+            const targetPath = path.join(__dirname, 'instances', folderName);
+            const pm2Name = `bot-${folderName}`;
+
+            console.log(`Menghapus server JPM expired: ${pm2Name}`);
+
+            // 1. Matikan dan hapus dari list PM2
+            exec(`pm2 delete "${pm2Name}"`, (err) => {
+                if (err) console.error(`Gagal menghapus PM2 ${pm2Name}:`, err.message);
+            });
+
+            // 2. Hapus folder server pembeli beserta isinya
+            if (fs.existsSync(targetPath)) {
+                fs.rmSync(targetPath, { recursive: true, force: true });
+            }
+        }
+    } catch (err) {
+        console.error('Error pengecekan server expired:', err);
+    }
+}, 60 * 60 * 1000); // 60 * 60 * 1000 ms = 1 Jam
 // --- ADMIN PANEL ROUTES ---
 
 app.get('/admin', isAdmin, async (req, res) => {
