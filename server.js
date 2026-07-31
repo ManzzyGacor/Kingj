@@ -353,13 +353,17 @@ app.post('/admin/settings/limit', isAdmin, async (req, res) => {
 // --- HALAMAN DETAIL SERVER USER ---
 app.get('/server/:id', isAuthenticated, async (req, res) => {
     try {
+        // Validasi apakah ID valid
+        if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).send('Format ID Server tidak valid.');
+        }
+
         const server = await ServerInstance.findOne({ _id: req.params.id, userId: req.session.userId });
         if (!server) return res.status(404).send('Server tidak ditemukan atau bukan milik Anda.');
 
         const targetPath = path.join(__dirname, 'instances', server.folderName);
         const pm2Name = `bot-${server.folderName}`;
 
-        // Cek status PM2 secara real-time
         let pm2Status = 'stopped';
         try {
             const { stdout } = await execPromise(`pm2 jlist`);
@@ -369,10 +373,9 @@ app.get('/server/:id', isAuthenticated, async (req, res) => {
                 pm2Status = 'online';
             }
         } catch (e) {
-            console.error('Gagal cek status PM2:', e);
+            console.error('Gagal cek status PM2:', e.message);
         }
 
-        // Ambil log terakhir untuk mencari pairing code jika ada
         let pairingCode = 'Belum digenerate / Bot sudah terkoneksi';
         try {
             const logPath = path.join(process.env.HOME || '/root', '.pm2', 'logs', `${pm2Name}-out.log`);
@@ -380,21 +383,16 @@ app.get('/server/:id', isAuthenticated, async (req, res) => {
                 const logContent = fs.readFileSync(logPath, 'utf8');
                 const matches = logContent.match(/Code Pairing\s*:\s*([0-9-]+)/g);
                 if (matches && matches.length > 0) {
-                    const lastMatch = matches[matches.length - 1];
-                    pairingCode = lastMatch;
+                    pairingCode = matches[matches.length - 1];
                 }
             }
         } catch (e) {}
 
-        res.render('server-detail', {
-            user: await User.findById(req.session.userId),
-            server,
-            pm2Status,
-            pairingCode
-        });
+        const user = await User.findById(req.session.userId);
+        res.render('server-detail', { user, server, pm2Status, pairingCode });
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Gagal memuat detail server.');
+        console.error('DETAIL SERVER ERROR:', err);
+        res.status(500).send(`Gagal memuat detail server: ${err.message}`);
     }
 });
 
